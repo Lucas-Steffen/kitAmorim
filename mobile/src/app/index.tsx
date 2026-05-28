@@ -15,10 +15,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-/**
- * Paleta dedicada do login: tema escuro com azul claro de destaque,
- * independente do esquema de cor do sistema.
- */
 const palette = {
   background: '#0B1424',
   backgroundAccent: '#0F1B30',
