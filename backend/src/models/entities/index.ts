@@ -1,5 +1,6 @@
-import { BaseEntity } from "typeorm";
+import { Users } from './users.entity';
+import { RolesEntity } from './roles.entity';
+import { AuthEntity } from './auth.entity';
+import { Permissions } from './permissions.entity';
 
-export const entities = {
-    BaseEntity
-}
+export const entities = [Users, RolesEntity, AuthEntity, Permissions];
