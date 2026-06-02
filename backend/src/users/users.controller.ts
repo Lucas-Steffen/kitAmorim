@@ -4,6 +4,7 @@ import { AppAbility, CheckPolicies } from 'src/auth/decorators/check.policies.de
 import { Action } from 'src/auth/casl/enums/casl.action';
 import { Public } from 'src/auth/decorators/is.public.decorator';
 import { forgotPasswordDto } from './dto/forgot.password.dto';
+import { ValidateCodeDto } from './dto/validate.code.dto';
 
 @Controller('users')
 export class UsersController {
@@ -21,5 +22,15 @@ export class UsersController {
     @Public()
     forgotPassword(@Body() body: forgotPasswordDto){
         return this.usersService.forgotPassword(body.email);
+    }
+
+    @Post('forgot-password/validate')
+    @Public()
+    validateCode(@Body() body: ValidateCodeDto) {
+        return this.usersService.validateForgotCode(
+            body.email,
+            body.code,
+            body.newPassword,
+        );
     }
 }

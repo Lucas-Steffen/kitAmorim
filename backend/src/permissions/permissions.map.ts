@@ -29,5 +29,11 @@ export const PERMISSIONS = {
             permissions: `delete.${Action.Delete}`,
             roles: [Roles.ADMIN]
         }
+    ],
+    validate: [
+        {
+            permissions: `validate.${Action.Read}`,
+            roles: [Roles.ADMIN, Roles.USER]
+        }
     ]
 }
