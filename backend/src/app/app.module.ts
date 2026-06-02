@@ -6,6 +6,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthModule } from 'src/auth/auth.module';
 import { UsersModule } from 'src/users/users.module';
 import { CaslModule } from 'src/auth/casl/casl.module';
+import { TenantsModule } from 'src/tenants/tenants.module';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { PoliciesGuard } from 'src/auth/policies.guard';
 
@@ -30,6 +31,7 @@ import { PoliciesGuard } from 'src/auth/policies.guard';
     UsersModule,
     CaslModule,
     AuthModule,
+    TenantsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: AuthGuard },

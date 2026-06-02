@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -14,6 +15,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { useAuth } from '@/data/auth-context';
 
 const palette = {
   background: '#0B1424',
@@ -31,6 +34,7 @@ const palette = {
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { login, isLoading, error } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -39,12 +43,16 @@ export default function LoginScreen() {
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
 
-  const canSubmit = email.trim().length > 0 && password.length > 0;
+  const canSubmit = email.trim().length > 0 && password.length > 0 && !isLoading;
 
-  function handleLogin() {
+  async function handleLogin() {
     if (!canSubmit) return;
-    // TODO: integrar com a autenticação real.
-    router.replace('/home');
+    try {
+      await login(email.trim(), password);
+      router.replace('/home');
+    } catch {
+      // erro já está em `error` do contexto
+    }
   }
 
   function handleConfirmInvite() {
@@ -115,12 +123,18 @@ export default function LoginScreen() {
                 <Text style={styles.firstAccessText}>Primeiro acesso</Text>
               </Pressable>
 
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
               <TouchableOpacity
                 activeOpacity={0.85}
                 disabled={!canSubmit}
                 onPress={handleLogin}
                 style={[styles.button, !canSubmit && styles.buttonDisabled]}>
-                <Text style={styles.buttonText}>Entrar</Text>
+                {isLoading ? (
+                  <ActivityIndicator color="#06101F" />
+                ) : (
+                  <Text style={styles.buttonText}>Entrar</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -291,6 +305,12 @@ const styles = StyleSheet.create({
     color: palette.accent,
     fontSize: 14,
     fontWeight: '600',
+  },
+  errorText: {
+    color: '#F87171',
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: -4,
   },
   button: {
     backgroundColor: palette.accent,

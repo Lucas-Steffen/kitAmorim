@@ -35,5 +35,15 @@ export const PERMISSIONS = {
             permissions: `validate.${Action.Read}`,
             roles: [Roles.ADMIN, Roles.USER]
         }
+    ],
+    tenants: [
+        {
+            permissions: `tenants.${Action.Create}`,
+            roles: [Roles.ADMIN]
+        },
+        {
+            permissions: `tenants.${Action.Read}`,
+            roles: [Roles.ADMIN]
+        }
     ]
 }
