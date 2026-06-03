@@ -4,6 +4,7 @@ import { createContext, useContext, useState, type ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useAuth } from '@/data/auth-context';
 import { colors, radius, spacing } from '@/theme';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
@@ -75,12 +76,19 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
 
 function Sidebar() {
   const { isOpen, close } = useSidebar();
+  const { logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   function go(href: string) {
     close();
     router.push(href as never);
+  }
+
+  function handleLogout() {
+    close();
+    logout();
+    router.replace('/');
   }
 
   return (
@@ -98,7 +106,7 @@ function Sidebar() {
               </View>
             </View>
 
-            <ScrollView contentContainerStyle={{ paddingBottom: spacing.xl }}>
+            <ScrollView contentContainerStyle={{ paddingBottom: spacing.xl }} style={{ flex: 1 }}>
               {MENU.map((section, i) => (
                 <View key={section.title ?? `s${i}`} style={styles.section}>
                   {section.title ? <Text style={styles.sectionLabel}>{section.title}</Text> : null}
@@ -122,6 +130,13 @@ function Sidebar() {
                 </View>
               ))}
             </ScrollView>
+
+            <View style={styles.logoutWrap}>
+              <TouchableOpacity activeOpacity={0.7} style={styles.logoutBtn} onPress={handleLogout}>
+                <Ionicons name="log-out-outline" size={20} color={colors.danger} />
+                <Text style={styles.logoutText}>Sair</Text>
+              </TouchableOpacity>
+            </View>
           </SafeAreaView>
         </View>
         <Pressable style={styles.scrim} onPress={close} />
@@ -241,6 +256,22 @@ const styles = StyleSheet.create({
   },
   menuBtn: { width: 40, height: 40, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.card },
   headerTitle: { color: colors.text, fontSize: 20, fontWeight: '700', flex: 1 },
+
+  logoutWrap: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    padding: spacing.md,
+  },
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.dangerSoft,
+  },
+  logoutText: { color: colors.danger, fontSize: 15, fontWeight: '600' },
 
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl * 2 },

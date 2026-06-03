@@ -1,9 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
+  ActionSheetIOS,
+  Alert,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,6 +18,7 @@ import {
 } from 'react-native';
 
 import { colors, radius, spacing } from '@/theme';
+import { formatCurrency } from '@/utils';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -238,7 +242,7 @@ export function Input({
   );
 }
 
-export type Option = { label: string; value: string };
+export type Option = { label: string; value: string; shortLabel?: string };
 
 export function Select({
   value,
@@ -257,7 +261,7 @@ export function Select({
     <>
       <TouchableOpacity activeOpacity={0.7} style={styles.inputWrap} onPress={() => setOpen(true)}>
         <Text style={[styles.input, !selected && { color: colors.placeholder }]} numberOfLines={1}>
-          {selected ? selected.label : placeholder}
+          {selected ? (selected.shortLabel ?? selected.label) : placeholder}
         </Text>
         <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
       </TouchableOpacity>
@@ -292,15 +296,41 @@ export function Select({
   );
 }
 
-async function pickImage(): Promise<string | null> {
+async function pickFromGallery(): Promise<string | null> {
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!perm.granted) return null;
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ['images'],
-    quality: 0.6,
-  });
+  const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.6 });
   if (result.canceled || !result.assets?.length) return null;
   return result.assets[0].uri;
+}
+
+async function capturePhoto(): Promise<string | null> {
+  const perm = await ImagePicker.requestCameraPermissionsAsync();
+  if (!perm.granted) return null;
+  const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.6 });
+  if (result.canceled || !result.assets?.length) return null;
+  return result.assets[0].uri;
+}
+
+function showPhotoPicker(): Promise<string | null> {
+  return new Promise((resolve) => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ['Cancelar', 'Tirar foto', 'Escolher da galeria'], cancelButtonIndex: 0 },
+        async (i) => {
+          if (i === 1) resolve(await capturePhoto());
+          else if (i === 2) resolve(await pickFromGallery());
+          else resolve(null);
+        },
+      );
+    } else {
+      Alert.alert('Selecionar foto', '', [
+        { text: 'Tirar foto', onPress: async () => resolve(await capturePhoto()) },
+        { text: 'Escolher da galeria', onPress: async () => resolve(await pickFromGallery()) },
+        { text: 'Cancelar', style: 'cancel', onPress: () => resolve(null) },
+      ]);
+    }
+  });
 }
 
 export function PhotoField({
@@ -317,7 +347,7 @@ export function PhotoField({
       activeOpacity={0.8}
       style={styles.photoBox}
       onPress={async () => {
-        const uri = await pickImage();
+        const uri = await showPhotoPicker();
         if (uri) onChange(uri);
       }}>
       {value ? (
@@ -342,12 +372,88 @@ export function PhotosField({ value, onChange }: { value: string[]; onChange: (u
         activeOpacity={0.8}
         style={styles.photoAdd}
         onPress={async () => {
-          const uri = await pickImage();
+          const uri = await showPhotoPicker();
           if (uri) onChange([...value, uri]);
         }}>
         <Ionicons name="add" size={24} color={colors.textSecondary} />
       </TouchableOpacity>
     </View>
+  );
+}
+
+// ---------- CurrencyInput ----------
+
+const NUMPAD_KEYS: (string | null)[] = ['1','2','3','4','5','6','7','8','9', null,'0','back'];
+
+export function CurrencyInput({
+  value,
+  onChangeText,
+}: {
+  value: string;
+  onChangeText: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [cents, setCents] = useState(0);
+
+  useEffect(() => {
+    const digits = value.replace(/\D/g, '');
+    setCents(parseInt(digits || '0'));
+  }, [value]);
+
+  function press(d: string) {
+    setCents((prev) => {
+      const next = prev * 10 + parseInt(d);
+      return next > 9_999_999_99 ? prev : next;
+    });
+  }
+
+  function backspace() {
+    setCents((prev) => Math.floor(prev / 10));
+  }
+
+  function confirm() {
+    onChangeText((cents / 100).toFixed(2).replace('.', ','));
+    setOpen(false);
+  }
+
+  const display = formatCurrency(cents / 100);
+
+  return (
+    <>
+      <TouchableOpacity activeOpacity={0.7} style={styles.inputWrap} onPress={() => setOpen(true)}>
+        <Text style={[styles.input, cents === 0 && { color: colors.placeholder }]}>
+          {display}
+        </Text>
+      </TouchableOpacity>
+
+      <Modal visible={open} transparent animationType="slide" statusBarTranslucent onRequestClose={confirm}>
+        <View style={styles.numpadRoot}>
+          <Pressable style={styles.numpadOverlay} onPress={confirm} />
+          <View style={styles.numpadSheet}>
+            <View style={styles.numpadHandle} />
+            <Text style={styles.numpadDisplay}>{display}</Text>
+            <View style={styles.numpadGrid}>
+              {NUMPAD_KEYS.map((k, i) =>
+                k === null ? (
+                  <View key={i} style={styles.numpadCell} />
+                ) : k === 'back' ? (
+                  <TouchableOpacity key={i} style={styles.numpadCell} activeOpacity={0.4} onPress={backspace}>
+                    <Ionicons name="backspace-outline" size={26} color={colors.text} />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity key={i} style={styles.numpadCell} activeOpacity={0.4} onPress={() => press(k)}>
+                    <Text style={styles.numpadDigit}>{k}</Text>
+                  </TouchableOpacity>
+                ),
+              )}
+            </View>
+            <TouchableOpacity style={styles.numpadOkBtn} activeOpacity={0.85} onPress={confirm}>
+              <Text style={styles.numpadOkText}>Ok</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -563,4 +669,60 @@ const styles = StyleSheet.create({
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   modalTitle: { color: colors.text, fontSize: 20, fontWeight: '700', flex: 1 },
   modalActions: { flexDirection: 'row', gap: spacing.md },
+
+  // CurrencyInput numpad
+  numpadRoot: { flex: 1, justifyContent: 'flex-end' },
+  numpadOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: colors.overlay },
+  numpadSheet: {
+    backgroundColor: colors.backgroundAlt,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingBottom: spacing.xxl,
+  },
+  numpadHandle: {
+    alignSelf: 'center',
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: colors.border,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  numpadDisplay: {
+    color: colors.text,
+    fontSize: 36,
+    fontWeight: '700',
+    textAlign: 'right',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    letterSpacing: -0.5,
+  },
+  numpadGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    borderTopWidth: 0,
+  },
+  numpadCell: {
+    width: '33.33%',
+    height: 68,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  numpadDigit: { color: colors.text, fontSize: 26, fontWeight: '400' },
+  numpadOkBtn: {
+    backgroundColor: colors.accent,
+    height: 54,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  numpadOkText: { color: colors.onAccent, fontSize: 17, fontWeight: '700' },
 });
